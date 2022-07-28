@@ -1,0 +1,774 @@
+{
+    "asset" : {
+        "generator" : "Khronos glTF Blender I/O v3.2.40",
+        "version" : "2.0"
+    },
+    "scene" : 0,
+    "scenes" : [
+        {
+            "name" : "Scene",
+            "nodes" : [
+                24
+            ]
+        }
+    ],
+    "nodes" : [
+        {
+            "name" : "ball",
+            "rotation" : [
+                -1.6860792584338924e-07,
+                -5.364220356796068e-08,
+                -2.185567993251425e-08,
+                1
+            ],
+            "scale" : [
+                1,
+                0.9999999403953552,
+                1
+            ],
+            "translation" : [
+                3.476795740198213e-08,
+                0.7953983545303345,
+                2.682209014892578e-07
+            ]
+        },
+        {
+            "name" : "handle_l",
+            "rotation" : [
+                0.5,
+                -0.5000000596046448,
+                0.5,
+                0.5
+            ],
+            "scale" : [
+                1,
+                0.9999999403953552,
+                1
+            ],
+            "translation" : [
+                -0.39021483063697815,
+                0.41218137741088867,
+                -0.05670403316617012
+            ]
+        },
+        {
+            "name" : "pedal_l_2",
+            "rotation" : [
+                3.4882532418123446e-08,
+                6.274533337347066e-09,
+                1.5145719345355246e-08,
+                1
+            ],
+            "scale" : [
+                0.9999999403953552,
+                1,
+                1
+            ],
+            "translation" : [
+                2.0954757928848267e-09,
+                0.05830169469118118,
+                5.3973053582012653e-08
+            ]
+        },
+        {
+            "children" : [
+                2
+            ],
+            "name" : "pedal_l_1",
+            "rotation" : [
+                -0.6653134822845459,
+                -0.5231096148490906,
+                -0.5280187129974365,
+                0.07007534801959991
+            ],
+            "scale" : [
+                0.9999998807907104,
+                0.9999996423721313,
+                1.0000001192092896
+            ],
+            "translation" : [
+                -8.940696716308594e-08,
+                0.22191256284713745,
+                5.21540641784668e-08
+            ]
+        },
+        {
+            "children" : [
+                3
+            ],
+            "name" : "pedal_base_l_3",
+            "rotation" : [
+                0.5258147120475769,
+                -0.6653211712837219,
+                -0.06622584909200668,
+                0.5258144736289978
+            ],
+            "scale" : [
+                1,
+                1.0000001192092896,
+                1
+            ],
+            "translation" : [
+                -0.054995711892843246,
+                0.26434028148651123,
+                0.4916810095310211
+            ]
+        },
+        {
+            "name" : "pedal_base_l_1",
+            "rotation" : [
+                1.6747287645557662e-07,
+                1.2019723882872313e-08,
+                -3.5025563178969765e-13,
+                1
+            ],
+            "translation" : [
+                1.534033344796626e-09,
+                0.0889766663312912,
+                -1.0914979142739867e-08
+            ]
+        },
+        {
+            "children" : [
+                5
+            ],
+            "name" : "pedal_base_l_2",
+            "rotation" : [
+                2.0934365352331952e-08,
+                1,
+                3.684399871417554e-06,
+                7.549789415861596e-08
+            ],
+            "scale" : [
+                1,
+                0.9999997019767761,
+                1
+            ],
+            "translation" : [
+                -0.054672081023454666,
+                0.26459062099456787,
+                0.43083783984184265
+            ]
+        },
+        {
+            "name" : "handle_r",
+            "rotation" : [
+                0.5000000596046448,
+                0.5,
+                -0.5,
+                0.5
+            ],
+            "translation" : [
+                0.3902147114276886,
+                0.41218137741088867,
+                -0.05670396611094475
+            ]
+        },
+        {
+            "name" : "pedal_r_2",
+            "rotation" : [
+                3.488776201265864e-08,
+                -6.821622378083703e-09,
+                -1.523029702354961e-08,
+                1
+            ],
+            "translation" : [
+                -5.820766091346741e-09,
+                0.05830173194408417,
+                1.9270373741164804e-08
+            ]
+        },
+        {
+            "children" : [
+                8
+            ],
+            "name" : "pedal_r_1",
+            "rotation" : [
+                -0.6653121113777161,
+                0.5231103301048279,
+                0.5280197858810425,
+                0.07007449865341187
+            ],
+            "scale" : [
+                0.9999998807907104,
+                1,
+                1
+            ],
+            "translation" : [
+                3.91155481338501e-08,
+                0.22191256284713745,
+                -2.2351741790771484e-08
+            ]
+        },
+        {
+            "children" : [
+                9
+            ],
+            "name" : "pedal_base_r_3",
+            "rotation" : [
+                0.525815486907959,
+                0.6653198003768921,
+                0.06622475385665894,
+                0.525815486907959
+            ],
+            "translation" : [
+                0.054995644837617874,
+                0.26434051990509033,
+                0.4916808605194092
+            ]
+        },
+        {
+            "name" : "pedal_base_r_1",
+            "rotation" : [
+                1.6747299014241435e-07,
+                -8.914426530282071e-09,
+                -3.9129127455544976e-13,
+                1
+            ],
+            "translation" : [
+                1.661851101175671e-09,
+                0.08897668868303299,
+                -1.662413318115341e-09
+            ]
+        },
+        {
+            "children" : [
+                11
+            ],
+            "name" : "pedal_base_r_2",
+            "rotation" : [
+                4.186846780385167e-08,
+                1,
+                4.019344032712979e-06,
+                7.549790126404332e-08
+            ],
+            "translation" : [
+                0.05467204749584198,
+                0.26459062099456787,
+                0.43083781003952026
+            ]
+        },
+        {
+            "name" : "tube_f_l",
+            "rotation" : [
+                0.17175963521003723,
+                -0.8684893250465393,
+                0.43211549520492554,
+                0.17175959050655365
+            ],
+            "scale" : [
+                1,
+                0.9999998211860657,
+                1
+            ],
+            "translation" : [
+                -0.11710578948259354,
+                0.5204493999481201,
+                -0.1216365247964859
+            ]
+        },
+        {
+            "name" : "tube_b_l",
+            "rotation" : [
+                0.05242062360048294,
+                -0.7224001288414001,
+                0.6874898076057434,
+                0.052420567721128464
+            ],
+            "scale" : [
+                1,
+                1.0000001192092896,
+                1
+            ],
+            "translation" : [
+                -0.07566709071397781,
+                0.39688530564308167,
+                -0.44602420926094055
+            ]
+        },
+        {
+            "name" : "tube_f_r",
+            "rotation" : [
+                0.17175979912281036,
+                0.8684889078140259,
+                -0.43211597204208374,
+                0.17175991833209991
+            ],
+            "scale" : [
+                1,
+                1.0000001192092896,
+                1
+            ],
+            "translation" : [
+                0.1171058937907219,
+                0.5204490423202515,
+                -0.12163659930229187
+            ]
+        },
+        {
+            "name" : "tube_b_r",
+            "rotation" : [
+                0.052420634776353836,
+                0.722400426864624,
+                -0.6874895691871643,
+                0.05242067202925682
+            ],
+            "scale" : [
+                1,
+                0.9999997615814209,
+                1
+            ],
+            "translation" : [
+                0.07566714286804199,
+                0.39688560366630554,
+                -0.44602397084236145
+            ]
+        },
+        {
+            "children" : [
+                1,
+                4,
+                6,
+                7,
+                10,
+                12,
+                13,
+                14,
+                15,
+                16
+            ],
+            "name" : "chair",
+            "rotation" : [
+                -4.2543998546307193e-08,
+                9.933102432891977e-17,
+                1,
+                3.070087519168978e-14
+            ],
+            "translation" : [
+                3.476795740198213e-08,
+                0.7953983545303345,
+                2.682209014892578e-07
+            ]
+        },
+        {
+            "name" : "plunger",
+            "rotation" : [
+                2.2416813294512394e-08,
+                1,
+                -1.6924222270744537e-15,
+                7.549790126404332e-08
+            ],
+            "translation" : [
+                2.6139126418911474e-09,
+                1.1775697469711304,
+                0.010787010192871094
+            ]
+        },
+        {
+            "name" : "winch",
+            "rotation" : [
+                2.4415513166786695e-08,
+                1,
+                -1.8433200878366232e-15,
+                7.549790126404332e-08
+            ],
+            "translation" : [
+                -1.764318824371003e-08,
+                1.018890380859375,
+                0.16112500429153442
+            ]
+        },
+        {
+            "children" : [
+                18,
+                19
+            ],
+            "name" : "gun",
+            "rotation" : [
+                0.7071068286895752,
+                1.4244737833735144e-08,
+                4.7572505934567744e-08,
+                0.7071068286895752
+            ],
+            "translation" : [
+                3.476795740198213e-08,
+                0.7953979969024658,
+                2.682209014892578e-07
+            ]
+        },
+        {
+            "children" : [
+                0,
+                17,
+                20
+            ],
+            "name" : "root",
+            "rotation" : [
+                0,
+                -7.669304310958902e-17,
+                -7.669304310958902e-17,
+                1
+            ]
+        },
+        {
+            "mesh" : 0,
+            "name" : "Ball",
+            "skin" : 0
+        },
+        {
+            "mesh" : 1,
+            "name" : "Base",
+            "skin" : 0
+        },
+        {
+            "children" : [
+                22,
+                23,
+                21
+            ],
+            "name" : "Armature"
+        }
+    ],
+    "materials" : [
+        {
+            "alphaMode" : "BLEND",
+            "doubleSided" : true,
+            "name" : "Glass",
+            "normalTexture" : {
+                "index" : 0
+            },
+            "pbrMetallicRoughness" : {
+                "baseColorFactor" : [
+                    0.5,
+                    0.5,
+                    0.5,
+                    1
+                ],
+                "baseColorTexture" : {
+                    "index" : 1
+                },
+                "metallicFactor" : 0,
+                "metallicRoughnessTexture" : {
+                    "index" : 2
+                }
+            }
+        },
+        {
+            "doubleSided" : true,
+            "name" : "Base",
+            "normalTexture" : {
+                "index" : 3
+            },
+            "pbrMetallicRoughness" : {
+                "baseColorTexture" : {
+                    "index" : 4
+                },
+                "metallicFactor" : 0,
+                "metallicRoughnessTexture" : {
+                    "index" : 5
+                }
+            }
+        }
+    ],
+    "meshes" : [
+        {
+            "name" : "Ball",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 0,
+                        "NORMAL" : 1,
+                        "TEXCOORD_0" : 2,
+                        "JOINTS_0" : 3,
+                        "WEIGHTS_0" : 4
+                    },
+                    "indices" : 5,
+                    "material" : 0
+                }
+            ]
+        },
+        {
+            "name" : "Base",
+            "primitives" : [
+                {
+                    "attributes" : {
+                        "POSITION" : 7,
+                        "NORMAL" : 8,
+                        "TEXCOORD_0" : 9,
+                        "JOINTS_0" : 10,
+                        "WEIGHTS_0" : 11
+                    },
+                    "indices" : 12,
+                    "material" : 1
+                }
+            ]
+        }
+    ],
+    "textures" : [
+        {
+            "sampler" : 0,
+            "source" : 0
+        },
+        {
+            "sampler" : 0,
+            "source" : 1
+        },
+        {
+            "sampler" : 0,
+            "source" : 2
+        },
+        {
+            "sampler" : 0,
+            "source" : 3
+        },
+        {
+            "sampler" : 0,
+            "source" : 4
+        },
+        {
+            "sampler" : 0,
+            "source" : 5
+        }
+    ],
+    "images" : [
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "glass_n",
+            "uri" : "glass_n.jpg"
+        },
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "glass_d",
+            "uri" : "glass_d.jpg"
+        },
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "glass_s",
+            "uri" : "glass_s.jpg"
+        },
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "body_n",
+            "uri" : "body_n.jpg"
+        },
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "body_d.png",
+            "uri" : "body_d_png.jpg"
+        },
+        {
+            "mimeType" : "image/jpeg",
+            "name" : "body_s",
+            "uri" : "body_s.jpg"
+        }
+    ],
+    "skins" : [
+        {
+            "inverseBindMatrices" : 6,
+            "joints" : [
+                21,
+                0,
+                17,
+                1,
+                4,
+                3,
+                2,
+                6,
+                5,
+                7,
+                10,
+                9,
+                8,
+                12,
+                11,
+                13,
+                14,
+                15,
+                16,
+                20,
+                18,
+                19
+            ],
+            "name" : "Armature"
+        }
+    ],
+    "accessors" : [
+        {
+            "bufferView" : 0,
+            "componentType" : 5126,
+            "count" : 802,
+            "max" : [
+                0.806606113910675,
+                1.6020044088363647,
+                0.8066059947013855
+            ],
+            "min" : [
+                -0.8066059947013855,
+                -0.011207531206309795,
+                -0.8066060543060303
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 1,
+            "componentType" : 5126,
+            "count" : 802,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 2,
+            "componentType" : 5126,
+            "count" : 802,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 3,
+            "componentType" : 5121,
+            "count" : 802,
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 4,
+            "componentType" : 5126,
+            "count" : 802,
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 5,
+            "componentType" : 5123,
+            "count" : 4560,
+            "type" : "SCALAR"
+        },
+        {
+            "bufferView" : 6,
+            "componentType" : 5126,
+            "count" : 22,
+            "type" : "MAT4"
+        },
+        {
+            "bufferView" : 7,
+            "componentType" : 5126,
+            "count" : 12128,
+            "max" : [
+                0.7752475142478943,
+                1.5257318019866943,
+                1.1775944232940674
+            ],
+            "min" : [
+                -0.7802020907402039,
+                0.06951485574245453,
+                -0.7400637865066528
+            ],
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 8,
+            "componentType" : 5126,
+            "count" : 12128,
+            "type" : "VEC3"
+        },
+        {
+            "bufferView" : 9,
+            "componentType" : 5126,
+            "count" : 12128,
+            "type" : "VEC2"
+        },
+        {
+            "bufferView" : 10,
+            "componentType" : 5121,
+            "count" : 12128,
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 11,
+            "componentType" : 5126,
+            "count" : 12128,
+            "type" : "VEC4"
+        },
+        {
+            "bufferView" : 12,
+            "componentType" : 5123,
+            "count" : 47949,
+            "type" : "SCALAR"
+        }
+    ],
+    "bufferViews" : [
+        {
+            "buffer" : 0,
+            "byteLength" : 9624,
+            "byteOffset" : 0
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9624,
+            "byteOffset" : 9624
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 6416,
+            "byteOffset" : 19248
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 3208,
+            "byteOffset" : 25664
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 12832,
+            "byteOffset" : 28872
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 9120,
+            "byteOffset" : 41704
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 1408,
+            "byteOffset" : 50824
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 145536,
+            "byteOffset" : 52232
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 145536,
+            "byteOffset" : 197768
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 97024,
+            "byteOffset" : 343304
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 48512,
+            "byteOffset" : 440328
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 194048,
+            "byteOffset" : 488840
+        },
+        {
+            "buffer" : 0,
+            "byteLength" : 95898,
+            "byteOffset" : 682888
+        }
+    ],
+    "samplers" : [
+        {
+            "magFilter" : 9729,
+            "minFilter" : 9987
+        }
+    ],
+    "buffers" : [
+        {
+            "byteLength" : 778788,
+            "uri" : "baller.bin"
+        }
+    ]
+}

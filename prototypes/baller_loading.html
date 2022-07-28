@@ -1,0 +1,58 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="/import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import { UtilGltf2, Gltf2 } from '../lib/UtilGltf2.js';
+
+let App;
+let Debug = {};
+
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 45, 20, 6, [0,0.8,0] ).render();
+
+    const texBody = new THREE.TextureLoader().load( '../assets/models/baller/body_d.jpg' );
+    texBody.flipY = false;
+
+    const texBall = new THREE.TextureLoader().load( '../assets/models/baller/glass_d.jpg' );
+    texBall.flipY = false;
+
+    const gltf  = await Gltf2.fetch( '../assets/models/baller/baller.gltf' );
+    const skel  = getSkeleton( gltf );
+    const mBase = getSkinnedMesh( gltf, 'Base', skel, new THREE.MeshPhongMaterial( { map:texBody } ) ); //color:'cyan',
+    const mBall = getSkinnedMesh( gltf, 'Ball', skel, new THREE.MeshPhongMaterial( { map:texBall, transparent:true, opacity:0.5 } ) );
+    App.add( mBase );
+    App.add( mBall );
+    App.add( new THREE.SkeletonHelper( mBase ) );
+
+    skel.bones[ 19 ].rotation.x += Math.PI * -0.05;
+});
+
+function getSkeleton( gltf ){
+    const glSkin    = gltf.getSkin();
+    const ary       = [];
+    let   bone;
+    for( const j of glSkin.joints ){
+        ary.push( (bone = new THREE.Bone()) );
+
+        if( j.name )                 bone.name = j.name;
+        if( j.position )             bone.position.fromArray( j.position );
+        if( j.rotation )             bone.quaternion.fromArray( j.rotation );
+        if( j.scale )                bone.scale.fromArray( j.scale );
+        if( j.parentIndex !== null ) ary[ j.parentIndex ].add( bone );
+    }
+
+    const skel = new THREE.Skeleton( ary );
+    return skel;
+}
+
+function getSkinnedMesh( gltf, name, skel, mat ){
+    const glMesh = gltf.getMesh( name );
+    const geo    = UtilGltf2.primitiveGeo( glMesh.primitives[ 0 ] );
+    const mesh   = new THREE.SkinnedMesh( geo, mat );
+    
+    mesh.add( skel.bones[ 0 ] );
+    mesh.bind( skel );
+    return mesh;
+}
+
+</script></body></html>

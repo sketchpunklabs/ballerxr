@@ -1,0 +1,205 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="/import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import ShapePointsMesh     	from '../lib/meshes/ShapePointsMesh.js';
+import DynLinesMesh        	from '../lib/meshes/DynLineMesh.js';
+import XhrFetch             from '../lib/misc/XhrFetch.js';
+import GridAlternative      from '../lib/meshes/GridAlternative.js';
+
+let App;
+let Debug = {};
+let Ref   = {};
+
+// ##### NOTES ######
+// 10km by 8km, tallest mountain is 967.5
+// 0.3 pixel is a meter
+// 64px can be split to 48x48 tiles
+
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 20, 40, 20, [0,1,0] ).render();
+
+    App.add( (Debug.pnt = new ShapePointsMesh() ) );
+    App.add( (Debug.ln  = new DynLinesMesh() ) );
+    
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Load up textures
+    const [ heightMap, diffuseMap ] = await Promise.all([
+        XhrFetch( '../assets/images/botw_hmap.jpg' ),
+        XhrFetch( '../assets/images/botw_tex.jpg' ),
+    ]);
+
+    const elm = document.getElementById( 'msg' );
+    elm.parentNode.removeChild( elm );
+
+    const texHeight  = new THREE.Texture( heightMap );
+    const texDiffuse = new THREE.Texture( diffuseMap );
+    texHeight.needsUpdate  = true;
+    texDiffuse.needsUpdate = true;
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const lvl  = 512;
+    const size = 8;
+    const mat  = customMaterial( 
+        texHeight, 
+        texDiffuse,
+        15, // 967.5 * ( size / 10000 ), // Height point * Ratio of Current tile size over total world tile size
+    );
+
+    const grid      = GridAlternative.mesh( mat, size,size, lvl, lvl, false, false );
+    grid.position.y = 0.01;
+    grid.position.x = size * -0.5;
+    grid.position.z = size * -0.5;
+    App.add( grid );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Ref.tile = new Tile( heightMap );
+    Ref.mat  = mat;
+    Ref.xPos = 1536;
+    Ref.yPos = 1536;
+    Ref.hRange = 15;
+
+    updateHitTest();    
+});
+
+window.addEventListener( 'keydown', (e)=>{
+    let xStep = 0;
+    let yStep = 0;
+
+    switch( e.key ){
+        case 'ArrowUp':     yStep = 1; break;
+        case 'ArrowDown':   yStep = -1; break;
+        case 'ArrowLeft':   xStep = -1; break;
+        case 'ArrowRight':  xStep = 1; break;
+    }
+
+    const step = 64;
+    const minStep = 5;
+    Ref.xPos = Math.max( 0, Math.min( Ref.xPos + minStep * xStep, 3072-step ) );
+    Ref.yPos = Math.max( 0, Math.min( Ref.yPos + minStep * yStep, 3072-step ) );
+    Ref.mat.userData.setPos( Ref.xPos, Ref.yPos );
+
+    updateHitTest();
+})
+
+function updateHitTest(){
+    // Simplify things just be computing the center of the TILE's PX which is at world origin.
+    // the Y Coordinate for canvas is TOP to Bottom where in the shader its Bottom Up.
+    // So to get the correct pixel need to flip the y position for the canvas.
+    const n = Ref.tile.getHeightAt( Ref.xPos + 32, 3072 - Ref.yPos - 32 );
+    const h = n * Ref.hRange;
+
+    Debug.pnt.reset().add( [0,h,0], 0x00ffff, 8 );
+    Debug.ln.reset().add( [0,h,0], [0,h+4,0], 0x00ffff );
+}
+
+function customMaterial( texH, texD, hRng ){
+    const mat = new THREE.RawShaderMaterial({
+        depthTest       : true,
+        transparent 	: true, 
+        side            : THREE.DoubleSide,
+
+        uniforms        : { 
+            texHeightMap    : { type :'sampler2D', value:texH },
+            texDiffuse      : { type :'sampler2D', value:texD },
+            heightRange     : { type :'float', value:hRng },
+            pxPos           : { type :'ivec2', value:[1536,1536] },
+            pxRng           : { type :'float', value:64 },
+        },
+
+        extensions      : { 
+            derivatives : true
+        },
+
+        vertexShader    : `#version 300 es
+        in	vec3    position;
+        in	vec2    uv;
+        
+        uniform     mat4    modelMatrix;
+        uniform     mat4    viewMatrix;
+        uniform     mat4    projectionMatrix;
+        
+        uniform sampler2D texHeightMap;
+        uniform float     heightRange;
+        uniform highp ivec2     pxPos;
+        uniform highp float     pxRng;
+
+        out vec3    fragPos;
+        out vec2    fragUV;
+
+        //texelFetch( tex, ivec2( x+3, y ), 0 )
+
+        void main(){
+            //float height      = texture( texHeightMap, uv ).r;
+            //float height        = texelFetch( texHeightMap, ivec2( uv * 3072.0 ), 0 ).r;
+
+            ivec2 px            = ivec2( uv * pxRng ) + pxPos;
+            float height        = texelFetch( texHeightMap, px, 0 ).r;
+            
+
+            vec3 pos            = position;
+            pos.y               = height * heightRange;
+            
+            vec4 wPos 	        = modelMatrix * vec4( pos, 1.0 );
+            
+            fragUV              = uv;
+            fragPos             = wPos.xyz;
+
+            gl_Position			= projectionMatrix * viewMatrix * wPos;
+        }`,
+
+        fragmentShader  : `#version 300 es
+        precision mediump float;
+        
+        //uniform sampler2D texHeightMap;
+        uniform sampler2D texDiffuse;
+        uniform  highp ivec2     pxPos;
+        uniform highp float     pxRng;
+
+        in  vec3    fragPos;
+        in  vec2    fragUV;
+        out vec4    outColor;
+
+        void main(){
+            //vec3 norm = normalize( cross( dFdx(fragPos), dFdy(fragPos) ) );
+            //float d = dot( norm, normalize( vec3( 0.5, 0.5, -0.5 ) ) );
+            //float height = texture( texHeightMap, fragUV ).r;
+            // float height        = texelFetch( texHeightMap, ivec2( fragUV * 3072.0 ), 0 ).r;
+            // outColor     = vec4( 0.0, height, height, 1.0 );
+
+            //outColor        = texelFetch( texDiffuse, ivec2( fragUV * 3072.0 ), 0 );
+
+            ivec2 px        = ivec2( fragUV * pxRng ) + pxPos;
+            outColor        = texelFetch( texDiffuse, px, 0 );
+        }`
+    });
+
+    mat.userData.setPos = ( x, y )=>{ mat.uniforms.pxPos.value = [x,y]; };
+    return mat;
+}
+
+class Tile{
+    canvas         = document.createElement( 'canvas' );
+    ctx            = this.canvas.getContext( '2d' );
+    constructor( img ){
+        const size = img.width;
+        this.canvas.width   = size;
+        this.canvas.height  = size;
+        this.ctx.drawImage( img, 0, 0, size, size );
+    }
+
+    getHeightAt( x, y ){
+        const px = this.ctx.getImageData( x, y, 1, 1 ).data;
+        return px[0] / 256;
+    }
+}
+
+</script>
+<div style="position:fixed; bottom:10px; left:10px;">
+    Use arrow keys to traverse the hyrule height maps.
+</div>
+
+<div style="position:fixed; top:10px; left:10px; color:lime; font-weight:bold;" id="msg">
+    LOADING TEXTURES -- PLEASE WAIT...
+</div>
+</body></html>

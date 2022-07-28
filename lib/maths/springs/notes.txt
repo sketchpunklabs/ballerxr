@@ -1,0 +1,42 @@
+//############################################################################
+	// http://box2d.org/files/GDC2011/GDC2011_Catto_Erin_Soft_Constraints.pdf
+	// http://allenchou.net/2015/04/game-math-more-on-numeric-springing/
+	// Ocs_ps = PI * 2 * i (I should not be over 10)
+	// Damp_ratio = -Log(0.5) / ( osc_ps * damp_time ) :: Damp Time, in seconds to damp. So damp 0.5 for every 2 seconds.
+	// Damp_ratio is using half life, but can replace log(0.5) with any log value between 0 and 1.
+	static semi_implicit_euler_vec3( dt, osc_ps, damp_ratio, pos_tar, pos_cur_o, vel_o ){
+		//vel += -2.0 * dt * damp_ratio * osc_ps * vel + dt * osc_ps * osc_ps * (to - pos);
+		//pos += dt * vel;
+
+		let a = -2.0 * dt * damp_ratio * osc_ps,
+			b = dt * osc_ps * osc_ps;
+
+		vel_o[0] += a * vel_o[0] + b * ( pos_tar[0] - pos_cur_o[0] );
+		vel_o[1] += a * vel_o[1] + b * ( pos_tar[1] - pos_cur_o[1] );
+		vel_o[2] += a * vel_o[2] + b * ( pos_tar[2] - pos_cur_o[2] );
+
+		pos_cur_o[0] += dt * vel_o[0];
+		pos_cur_o[1] += dt * vel_o[1];
+		pos_cur_o[2] += dt * vel_o[2];
+
+		return pos_cur_o;
+	}
+
+	static semi_implicit_euler_quat( dt, osc_ps, damp_ratio, rot_tar, rot_cur_o, vel_o ){
+		//vel += -2.0 * dt * damp_ratio * osc_ps * vel + dt * osc_ps * osc_ps * (to - pos);
+		//pos += dt * vel;
+		let a = -2.0 * dt * damp_ratio * osc_ps,
+			b = dt * osc_ps * osc_ps;
+
+		vel_o[0] += a * vel_o[0] + b * ( rot_tar[0] - rot_cur_o[0] );
+		vel_o[1] += a * vel_o[1] + b * ( rot_tar[1] - rot_cur_o[1] );
+		vel_o[2] += a * vel_o[2] + b * ( rot_tar[2] - rot_cur_o[2] );
+		vel_o[3] += a * vel_o[3] + b * ( rot_tar[3] - rot_cur_o[3] );
+
+		rot_cur_o[0] += dt * vel_o[0];
+		rot_cur_o[1] += dt * vel_o[1];
+		rot_cur_o[2] += dt * vel_o[2];
+		rot_cur_o[3] += dt * vel_o[3];
+
+		return rot_cur_o.norm();
+	}
