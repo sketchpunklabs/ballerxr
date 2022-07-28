@@ -11,5 +11,3 @@ innerHTML	: `
         "gl-matrix"         : "${prepend}/thirdparty/gl-matrix/index.js"
     }}
 `}));
-
-console.log( document.location.hostname.indexOf( 'localhost' ) );
