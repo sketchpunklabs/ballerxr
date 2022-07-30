@@ -22,7 +22,7 @@ window.addEventListener( "load", async _=>{
     const mBall = getSkinnedMesh( gltf, 'Ball', skel, new THREE.MeshPhongMaterial( { map:texBall, transparent:true, opacity:0.5 } ) );
     App.add( mBase );
     App.add( mBall );
-    App.add( new THREE.SkeletonHelper( mBase ) );
+    App.add( new THREE.SkeletonHelper( mBall ) );
 
     skel.bones[ 19 ].rotation.x += Math.PI * -0.05;
 });
