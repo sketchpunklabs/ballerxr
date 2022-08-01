@@ -1,0 +1,54 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+
+import GamepadInput  from '../lib/input/GamepadInput.js';
+import KeyboardInput from '../lib/input/KeyboardInput.js';
+
+const Ref = {
+    gamepad : null,
+    forward : 0,
+    turn    : 0,
+};
+
+window.addEventListener( "load", _=>{
+    const ki = new KeyboardInput();
+    const gi = new GamepadInput();
+    gi.onControlReady = ( profile )=>{
+        //console.log( profile );
+        switch( profile.key ){
+            case 'T.Flight Hotas X': Ref.gamepad = handleHotas; break;
+            case 'Xbox 360':         Ref.gamepad = handleXbox; break;
+        }
+    };
+
+    setInterval( ()=>{
+        if( Ref.gamepad ){
+            gi.poll();
+            Ref.gamepad( gi );
+        }else handleKeyboard( ki );
+
+        console.log( 'Forward: %f Turn: %f', Ref.forward, Ref.turn );
+    }, 500 );
+});
+
+
+function handleKeyboard( ki ){
+    const arrows = ki.getArrowState();
+    Ref.forward = ( arrows.up )?    1 :
+                  ( arrows.down )? -1 : 0;
+
+    Ref.turn = ( arrows.right )?  1 :
+               ( arrows.left )?  -1 : 0;
+}
+
+function handleHotas( gi ){
+    const joy   = gi.items[ 0 ].getAxesValue( 'joyStick' );
+    Ref.forward = -joy[ 1 ];
+    Ref.turn    = joy[ 0 ] ;
+}
+
+function handleXbox( gi ){
+    const joy   = gi.items[ 0 ].getAxesValue( 'joyStickR' );
+    Ref.forward = -joy[ 1 ];
+    Ref.turn    = joy[ 0 ] ;
+}
+</script></body></html>
