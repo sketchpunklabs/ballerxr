@@ -1,0 +1,235 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import ShapePointsMesh     	from '../lib/meshes/ShapePointsMesh.js';
+import GridAlternative      from '../lib/meshes/GridAlternative.js';
+import { vec2 }             from '../thirdparty/gl-matrix/index.js';
+import KeyboardInput        from '../lib/input/KeyboardInput.js';
+import noise                from '../thirdparty/perlin.js';
+import XhrFetch             from '../lib/misc/XhrFetch.js';
+
+let App;
+let Debug = {};
+let Ref   = { 
+    div  : 10,
+    size : 1,
+    freq : 0.7,
+};
+
+// https://colorhunt.co/
+const colors    = [ 0x81D773, 0x6DA9EA, 0xF7716A, 
+                    0x8ef7ee, 0xFFAFAF, 0xFFF89C, 
+                    0xCA82FF, 0xFFD36E, 0x76BA99 ];
+
+window.addEventListener( "load", _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 180, 40, 6, [0,0,0] );
+    App.onRender = onRender;
+
+    Ref.keyboard = new KeyboardInput();
+	App.add( (Debug.pnt = new ShapePointsMesh() ) );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Ref.target =[ 0.5, 0.0, 0.5 ];
+    Debug.pnt.add( [0,.1,0], 0xff0000, 8, 3 );
+    Debug.pnt.position.fromArray( Ref.target );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Ref.man             = new NinePatch( Ref.size, [15,15] );
+    Ref.man.onRecycle   = onRecycle;
+
+    for( const [i, n] of Ref.man.nodes.entries() ){
+        const geo  = GridAlternative.geometryBuffer( Ref.size, Ref.size, Ref.div, Ref.div, false );
+        //const mesh = new THREE.Mesh( geo, new THREE.MeshPhongMaterial( { color: colors[i], wireframe:false, flatShading:true } ) );
+        const mesh = new THREE.Mesh( geo, new THREE.MeshPhongMaterial( { map: new THREE.Texture(), wireframe:false, flatShading:true } ) );
+        n.setMesh( mesh );
+        App.add( n.mesh );
+    }
+
+    //Ref.man.updatePositions();
+    Ref.man.update( Ref.target, true );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    App.render();
+});
+
+function onRender( dt, et ){
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const arrows = Ref.keyboard.getArrowState();
+    const xx     = ( arrows.right )?  -1 : ( arrows.left )? 1 : 0;
+    const yy     = ( arrows.up )?     1 : ( arrows.down )? -1 : 0;
+    const speed  = 2.0 * dt;
+
+    Ref.target[ 0 ] += xx * speed;
+    Ref.target[ 2 ] += yy * speed;
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Update Target position & run update on patch
+    Debug.pnt.position.fromArray( Ref.target );
+    Ref.man.update( Ref.target );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Get the Ground height where the marker is
+    const n = Ref.man.getNodeIn( Ref.target );
+    if( n ){
+        Debug.pnt.position.y = noise( 
+            ( n.coord[ 0 ] + ( Ref.target[ 0 ] - n.pos[ 0 ] ) / Ref.size ) * Ref.freq,
+            ( n.coord[ 1 ] + ( Ref.target[ 2 ] - n.pos[ 2 ] ) / Ref.size ) * Ref.freq,
+        );
+    }
+}
+
+function onRecycle( ary ){
+    for( const n of ary ){
+        const tex = n.mesh.material.map;
+        XhrFetch( '../assets/hyrule/' + n.coord[0] + '_' + n.coord[1] + '.jpg' )
+        .then( img=>{
+            tex.source.data = img;
+            tex.needsUpdate = true;
+        });
+        applyNoise( n.mesh, n.coord );
+    }
+}
+
+function applyNoise( mesh, coord ){
+    const len   = Ref.div + 1;
+    const geo   = mesh.geometry;
+    const verts = geo.attributes.position.array;
+
+    for( let i=0; i < verts.length; i+=3 ){
+        const vi = Math.floor( i / 3 );
+        const y  = Math.floor( vi / len );
+        const x  = vi - y * len;
+
+        verts[ i+1 ] = noise( 
+            ( coord[ 0 ] + x / Ref.div ) * Ref.freq, 
+            ( coord[ 1 ] + y / Ref.div ) * Ref.freq,
+        );
+    }
+
+    geo.attributes.position.needsUpdate = true;
+}
+
+// #region 9 PATCH
+const COORDS    = [ [ -1,-1 ], [ 0, -1], [ 1, -1 ],
+                    [ -1, 0 ], [ 0,  0], [ 1,  0 ],
+                    [ -1, 1 ], [ 0,  1], [ 1,  1 ] ];
+
+class Node{
+    constructor( coord ){
+        this.mesh   = null;
+        this.coord  = [ 0, 0 ];
+        this.pos    = [ 0, 0.01, 0 ];
+        this.setCoord( coord );
+    }
+
+    setCoord( c ){ vec2.copy( this.coord, c ); }
+    setMesh( mesh ){ this.mesh = mesh; }
+}
+
+class NinePatch{
+    // #region MAIN
+    nodes       = [];
+    tileSize    = 1;
+    originCoord = [ 0, 0 ];
+    centerCoord = [ 99999999, 99999999 ];
+    onRecycle   = null;
+
+    constructor( size=1, coordOrigin=[0,0] ){
+        this.tileSize = size;
+        vec2.copy( this.originCoord, coordOrigin );
+        
+        const coord = [ 0, 0 ];
+        for( let i=0; i < 9; i++ ){
+            vec2.sub( coord, this.originCoord, COORDS[i] );
+            this.nodes.push( new Node( coord ) );
+        }
+    }
+    // #endregion
+
+    _computePosCoord( pos ){
+        let coord = [
+            Math.floor( pos[ 0 ] / this.tileSize ),
+            Math.floor( pos[ 2 ] / this.tileSize )
+        ];
+
+        vec2.add( coord, coord, this.originCoord );
+        return coord;
+    }
+
+    getNodeIn( pos ){
+        const coord = this._computePosCoord( pos );
+        for( const n of this.nodes ){
+            if( vec2.equals( n.coord, coord ) ) return n;
+        }
+
+        return null;
+    }
+
+    update( pos, force=false ){
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Check if the world center coord has changed
+        const coord = this._computePosCoord( pos );
+        let newCoords;
+        let recTiles;
+
+        if( !force ){
+            if( vec2.equals( coord, this.centerCoord ) ) return;
+            vec2.copy( this.centerCoord, coord );
+            
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Compute new coordinates
+            newCoords = [];
+            for( let i=0; i < 9; i++ ){
+                newCoords.push( vec2.add( [0,0], COORDS[i], this.centerCoord ) );
+            }
+
+            // Find which tiles need to be reycled
+            recTiles = [];
+            for( let i=0; i < 9; i++ ){
+                const t = this.nodes[ i ];
+                
+                if( vec2.sqrDist( this.centerCoord, t.coord ) > 2 ) recTiles.push( t );
+                else{
+                    for( let j=newCoords.length-1; j >= 0; j-- ){
+                        if( vec2.equals( newCoords[j], t.coord  ) ){ newCoords.splice( j, 1 ); break; }
+                    }
+                }
+            }
+        }else{
+            vec2.copy( this.centerCoord, coord );
+            recTiles  = this.nodes.slice();
+            newCoords = [];
+            for( let i=0; i < 9; i++ ){
+                newCoords.push( vec2.add( [0,0], COORDS[i], this.centerCoord ) );
+            }
+        }  
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if( newCoords.length !== recTiles.length ){ console.error( 'New Coords & Recycling Tile Counts do not match' ); return; }
+
+        for( let i=0; i < recTiles.length; i++ ) recTiles[ i ].setCoord( newCoords[ i ] );
+    
+        this.updatePositions();
+
+        if( this.onRecycle ) this.onRecycle( recTiles );
+    }    
+
+
+    updatePositions(){
+        const coord = [0,0];
+        for( const n of this.nodes ){
+            vec2.sub( coord, n.coord, this.originCoord );
+            n.pos[ 0 ] = coord[ 0 ] * this.tileSize;
+            n.pos[ 2 ] = coord[ 1 ] * this.tileSize;
+            n.mesh.position.fromArray( n.pos );
+        }
+    }
+}
+// #endregion
+
+</script>
+<div style="position:fixed; bottom:10px; left:10px;">
+    Use arrow keys to move triangle
+</div>
+</body></html>

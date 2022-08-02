@@ -1,0 +1,353 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import ShapePointsMesh     	from '../lib/meshes/ShapePointsMesh.js';
+import GridAlternative      from '../lib/meshes/GridAlternative.js';
+import { vec2, vec3 }       from '../thirdparty/gl-matrix/index.js';
+import KeyboardInput        from '../lib/input/KeyboardInput.js';
+import XhrFetch             from '../lib/misc/XhrFetch.js';
+import OrbitCam             from '../lib/misc/OrbitCam.js';
+
+let App;
+let Debug = {};
+let Ref   = {
+    pxSize      : 96,
+    mapHeight   : 5.0,
+    div         : 40,
+    size        : 2,
+};
+
+// 3072 px hmap
+// 32 tiles images
+// 96 px range per tile
+
+// https://colorhunt.co/
+const colors    = [ 0x81D773, 0x6DA9EA, 0xF7716A, 
+                    0x8ef7ee, 0xFFAFAF, 0xFFF89C, 
+                    0xCA82FF, 0xFFD36E, 0x76BA99 ];
+
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true,  orbit: false } );
+    App.camCtrl = new OrbitCam( App.camera, App.renderer )
+        .setOrbit( 0, 40, 4 );
+    App.onRender = onRender;
+
+    Ref.keyboard = new KeyboardInput();
+	App.add( (Debug.pnt = new ShapePointsMesh() ) );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const heightMap = await XhrFetch( '../assets/images/botw_hmap.jpg' );
+    const texHeight = new THREE.Texture( heightMap );
+    texHeight.needsUpdate  = true;
+
+    Ref.target = [ 0.5, 0.0, 0.5 ];
+    Debug.pnt.add( [0,.1,0], 0xff0000, 8, 3 );
+    Debug.pnt.position.fromArray( Ref.target );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Ref.man             = new NinePatch( Ref.size, [15,15] );
+    Ref.man.onRecycle   = onRecycle;
+
+    for( const [i, n] of Ref.man.nodes.entries() ){
+        const geo  = GridAlternative.geometryBuffer( Ref.size, Ref.size, Ref.div, Ref.div, false );
+        //const mesh = new THREE.Mesh( geo, new THREE.MeshPhongMaterial( { color: colors[i], wireframe:false, flatShading:true } ) );
+        //const mesh = new THREE.Mesh( geo, new THREE.MeshPhongMaterial( { map: new THREE.Texture(), wireframe:false, flatShading:true } ) );
+        const mesh = new THREE.Mesh( geo, customMaterial( texHeight, Ref.mapHeight ) );
+        
+        n.setMesh( mesh );
+        App.add( n.mesh );
+    }
+
+    //Ref.man.updatePositions();
+    Ref.man.update( Ref.target, true );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    
+    Ref.tile = new Tile( heightMap );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    App.render();
+});
+
+function onRender( dt, et ){
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const arrows = Ref.keyboard.getArrowState();
+    const xx     = ( arrows.right )?  -1 : ( arrows.left )? 1 : 0;
+    const yy     = ( arrows.up )?     1 : ( arrows.down )? -1 : 0;
+    const speed  = 2.0 * dt;
+
+    const me  = App.camera.matrixWorld.elements;
+    
+    const fwd = [-me[8], -me[9], -me[10]];
+    vec3.normalize( fwd, fwd );
+    vec3.scale( fwd, fwd, yy * speed );
+    vec3.add( Ref.target, Ref.target, fwd );
+
+    const rit = [-me[0], -me[1], -me[2]];
+    vec3.normalize( rit, rit );
+    vec3.scale( rit, rit, xx * speed );
+    vec3.add( Ref.target, Ref.target, rit );
+
+    // Ref.target[ 0 ] += xx * speed;
+    // Ref.target[ 2 ] += yy * speed;
+
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Update Target position & run update on patch
+    Debug.pnt.position.fromArray( Ref.target );
+    Ref.man.update( Ref.target );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // Get the Ground height where the marker is
+
+    const fCoord = Ref.man.getCoordFract( Ref.target );
+    fCoord[ 0 ] = Math.floor( fCoord[ 0 ] * Ref.pxSize );
+    fCoord[ 1 ] = Math.floor( fCoord[ 1 ] * Ref.pxSize );
+    
+    Debug.pnt.position.y = Ref.tile.getHeightAt( fCoord[0], fCoord[1] ) * Ref.mapHeight;
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    App.camCtrl.setTarget( Debug.pnt.position.toArray() );
+}
+
+function coordToPx( coord ){
+    return [
+        Ref.pxSize * coord[ 0 ],
+        Ref.pxSize * ( 31.0 - coord[ 1 ] )  // Need to invert y since Pixel & Tile coords goes in opposite direction from eachother
+    ];
+}
+
+function onRecycle( ary ){
+    for( const n of ary ){
+        const mat = n.mesh.material;
+        const tex = mat.uniforms.map.value;
+        
+        const px  = coordToPx( n.coord );
+        mat.userData.setPos( px[0], px[1] );
+        // console.log( n, n.coord );
+
+        XhrFetch( '../assets/hyrule/' + n.coord[0] + '_' + n.coord[1] + '.jpg' )
+        .then( img=>{
+            tex.source.data = img;
+            tex.needsUpdate = true;
+        });
+    }
+}
+
+
+// #region 9 PATCH
+const COORDS    = [ [ -1,-1 ], [ 0, -1], [ 1, -1 ],
+                    [ -1, 0 ], [ 0,  0], [ 1,  0 ],
+                    [ -1, 1 ], [ 0,  1], [ 1,  1 ] ];
+
+class Node{
+    constructor( coord ){
+        this.mesh   = null;
+        this.coord  = [ 0, 0 ];
+        this.pos    = [ 0, 0.01, 0 ];
+        this.setCoord( coord );
+    }
+
+    setCoord( c ){ vec2.copy( this.coord, c ); }
+    setMesh( mesh ){ this.mesh = mesh; }
+}
+
+class NinePatch{
+    // #region MAIN
+    nodes       = [];
+    tileSize    = 1;
+    originCoord = [ 0, 0 ];
+    centerCoord = [ 99999999, 99999999 ];
+    onRecycle   = null;
+
+    constructor( size=1, coordOrigin=[0,0] ){
+        this.tileSize = size;
+        vec2.copy( this.originCoord, coordOrigin );
+        
+        const coord = [ 0, 0 ];
+        for( let i=0; i < 9; i++ ){
+            vec2.sub( coord, this.originCoord, COORDS[i] );
+            this.nodes.push( new Node( coord ) );
+        }
+    }
+    // #endregion
+
+    _computePosCoord( pos ){
+        let coord = [
+            Math.floor( pos[ 0 ] / this.tileSize ),
+            Math.floor( pos[ 2 ] / this.tileSize )
+        ];
+
+        vec2.add( coord, coord, this.originCoord );
+        return coord;
+    }
+
+    getCoordFract( pos ){
+        const coord = [
+            pos[ 0 ] / this.tileSize,
+            pos[ 2 ] / this.tileSize
+        ];
+
+        vec2.add( coord, coord, this.originCoord );
+        return coord;
+    }
+
+
+    getNodeIn( pos ){
+        const coord = this._computePosCoord( pos );
+        for( const n of this.nodes ){
+            if( vec2.equals( n.coord, coord ) ) return n;
+        }
+
+        return null;
+    }
+
+    update( pos, force=false ){
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Check if the world center coord has changed
+        const coord = this._computePosCoord( pos );
+        let newCoords;
+        let recTiles;
+
+        if( !force ){
+            if( vec2.equals( coord, this.centerCoord ) ) return;
+            vec2.copy( this.centerCoord, coord );
+            
+            // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            // Compute new coordinates
+            newCoords = [];
+            for( let i=0; i < 9; i++ ){
+                newCoords.push( vec2.add( [0,0], COORDS[i], this.centerCoord ) );
+            }
+
+            // Find which tiles need to be reycled
+            recTiles = [];
+            for( let i=0; i < 9; i++ ){
+                const t = this.nodes[ i ];
+                
+                if( vec2.sqrDist( this.centerCoord, t.coord ) > 2 ) recTiles.push( t );
+                else{
+                    for( let j=newCoords.length-1; j >= 0; j-- ){
+                        if( vec2.equals( newCoords[j], t.coord  ) ){ newCoords.splice( j, 1 ); break; }
+                    }
+                }
+            }
+        }else{
+            vec2.copy( this.centerCoord, coord );
+            recTiles  = this.nodes.slice();
+            newCoords = [];
+            for( let i=0; i < 9; i++ ){
+                newCoords.push( vec2.add( [0,0], COORDS[i], this.centerCoord ) );
+            }
+        }  
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if( newCoords.length !== recTiles.length ){ console.error( 'New Coords & Recycling Tile Counts do not match' ); return; }
+
+        for( let i=0; i < recTiles.length; i++ ) recTiles[ i ].setCoord( newCoords[ i ] );
+    
+        this.updatePositions();
+
+        if( this.onRecycle ) this.onRecycle( recTiles );
+    }    
+
+
+    updatePositions(){
+        const coord = [0,0];
+        for( const n of this.nodes ){
+            vec2.sub( coord, n.coord, this.originCoord );
+            n.pos[ 0 ] = coord[ 0 ] * this.tileSize;
+            n.pos[ 2 ] = coord[ 1 ] * this.tileSize;
+            n.mesh.position.fromArray( n.pos );
+        }
+    }
+}
+// #endregion
+
+function customMaterial( texH, hRng ){
+    const mat = new THREE.RawShaderMaterial({
+        depthTest       : true,
+        transparent 	: true, 
+        side            : THREE.DoubleSide,
+
+        uniforms        : { 
+            map             : { type :'sampler2D', value:new THREE.Texture() },
+            texHeightMap    : { type :'sampler2D', value:texH },
+            heightRange     : { type :'float', value:hRng },
+            pxPos           : { type :'ivec2', value:[1536,1536] },
+            pxRng           : { type :'float', value:Ref.pxSize },
+        },
+
+        extensions      : { 
+            derivatives : true
+        },
+
+        vertexShader    : `#version 300 es
+        in	vec3    position;
+        in	vec2    uv;
+        
+        uniform     mat4    modelMatrix;
+        uniform     mat4    viewMatrix;
+        uniform     mat4    projectionMatrix;
+        
+        uniform sampler2D       texHeightMap;
+        uniform float           heightRange;
+        uniform highp ivec2     pxPos;
+        uniform highp float     pxRng;
+
+        out vec2    fragUV;
+
+        //texelFetch( tex, ivec2( x+3, y ), 0 )
+
+        void main(){
+            ivec2 px            = ivec2( uv * pxRng ) + pxPos;
+            float height        = texelFetch( texHeightMap, px, 0 ).r;
+            
+            vec3 pos            = position;
+            pos.y               = height * heightRange;
+            
+            vec4 wPos 	        = modelMatrix * vec4( pos, 1.0 );
+            fragUV              = uv;
+
+            gl_Position			= projectionMatrix * viewMatrix * wPos;
+        }`,
+
+        fragmentShader  : `#version 300 es
+        precision mediump float;
+        uniform sampler2D map;
+        in  vec2    fragUV;
+        out vec4    outColor;
+
+        void main(){
+            outColor = texture( map, fragUV );
+        }`
+    });
+
+    mat.userData.setPos = ( x, y )=>{ 
+        mat.uniforms.pxPos.value[0] = x;
+        mat.uniforms.pxPos.value[1] = y;
+    };
+    
+    return mat;
+}
+
+class Tile{
+    canvas         = document.createElement( 'canvas' );
+    ctx            = this.canvas.getContext( '2d' );
+    constructor( img ){
+        const size = img.width;
+        this.canvas.width   = size;
+        this.canvas.height  = size;
+        this.ctx.drawImage( img, 0, 0, size, size );
+    }
+
+    getHeightAt( x, y ){
+        const px = this.ctx.getImageData( x, y, 1, 1 ).data;
+        return px[0] / 256;
+    }
+}
+
+</script>
+<div style="position:fixed; bottom:10px; left:10px;">
+    Use arrow keys to move triangle
+</div>
+</body></html>
