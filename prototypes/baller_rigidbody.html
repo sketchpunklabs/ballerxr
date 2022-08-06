@@ -1,0 +1,170 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import DynLinesMesh        	from '../lib/meshes/DynLineMesh.js';
+import KeyboardInput        from '../lib/input/KeyboardInput.js';
+import facedCube           	from '../lib/meshes/FacedCube.js';
+import { vec3, quat }       from 'gl-matrix';
+
+let App;
+let Debug = {};
+let Ref   = {
+    forward : [0,0,1],
+};
+
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 180, 60, 30, [0,0.8,0] );
+    App.onRender = onRender;
+
+    App.add( (Debug.ln  = new DynLinesMesh() ) );
+    Ref.keyboard        = new KeyboardInput();
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const cube = facedCube();
+    cube.position.set( 0, 0.5, -6 );
+    App.add( cube );
+
+    Ref.rbody = new RigidBody()
+        .setMesh( cube )
+        .setPosition( cube.position.toArray() )
+    ;
+
+    //Ref.rbody.addForce( [0,0,200 ], [0,0.5,0] );
+    console.log( vec3.cross( [0,0,0], [0,1,0], Ref.forward ) );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    App.render();
+});
+
+function onRender( dt, et ){
+    const arrows = Ref.keyboard.getArrowState();
+    const fwd    = ( arrows.up )? 1 : ( arrows.down )? -1 : 0;
+    const steer  = ( arrows.right )? -1 : ( arrows.left )? 1 : 0;
+
+    const v      = [0,0,0];
+    const speed  = 7;
+
+    if( steer ){
+        vec3.rotateY( Ref.forward, Ref.forward, [0,0,0], (130 * (Math.PI / 180)) * dt * steer );
+        vec3.normalize( Ref.forward, Ref.forward );
+        // vec3.cross( v, [0,1,0], Ref.forward );
+        // vec3.scale( v, v, 5 * steer );
+        // Ref.rbody.addForce( v, [0,0.5,0] );
+    }
+
+    if( fwd ){
+        Ref.rbody.friction = 0.4;
+        vec3.scale( v, Ref.forward, speed * fwd );
+        Ref.rbody.addForce( v, [0,0.5,0] );
+    }else Ref.rbody.friction = 2.0;
+
+    Ref.rbody.update( dt );
+    Debug.ln
+        .reset()
+        .add( Ref.rbody.position, vec3.scaleAndAdd( v, Ref.rbody.position, Ref.forward, 3 ), 0xffffff )
+    ; 
+}
+
+// https://www.youtube.com/watch?v=CdPYlj5uZeI&list=WL&index=3&t=168s
+// https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics
+// https://en.wikipedia.org/wiki/List_of_moments_of_inertia
+
+class RigidBody{
+    // #region MAIN
+    mesh            = null;
+    
+    mass            = 1;
+    friction        = 0.4;
+    
+    position        = [0,0,0];
+    rotation        = [0,0,0,1];
+    linVelocity     = [0,0,0];
+    angVelocity     = [0,0,0];
+    
+    gravity         = [0,-9.81,0];      // Downward Force
+    force           = [0,0,0];          // Linear Force
+    torque          = [0,0,0];          // Angular Force
+
+    // Hollow Sphere Inertia = 2/3 * ( mr^2 )
+    // Solid Sphere Inertia  = 2/5 * ( mr^2 )
+    radius          = 1.0;
+    inertia         = 2/5 * ( this.mass * ( this.radius**2 ) );
+
+    constructor(){}
+    // #endregion
+
+    // #region SETTERS
+    setMesh( m ){ this.mesh = m; return this; }
+    setPosition( p ){ vec3.copy( this.position, p ); return this; }
+
+    addForce( force, atPos=null ){
+        vec3.add( this.force, this.force, force );
+        if( atPos ){
+            // 2D Torque = radius.x * force.y - radius.y * force.x ( Radius = PointOfForce - CenterOfMass )
+            // 3D Torque = cross( radius, force );
+            const torque = vec3.cross( [0,0,0], atPos, force );
+            vec3.add( this.torque, this.torque, torque );
+        }
+        return this;
+    }
+    // #endregion
+
+    update( dt ){
+        const accel = [0,0,0];
+        const f     = [0,0,0];
+        const tmp   = [0,0,0];
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Accumulate Forces
+        vec3.add( f, f, this.force );
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Handle Linear Velocity
+
+        // Acceleration  = force / mass
+        vec3.scale( accel, f, 1 / this.mass );                                  
+        
+        // Velocity += Acceleration * Time
+        vec3.scaleAndAdd( this.linVelocity, this.linVelocity, accel, dt );      
+
+        // Velocity += Invert( Vel ) * Factor * Time
+        vec3.scaleAndAdd( this.linVelocity, this.linVelocity, this.linVelocity, -this.friction * dt ); 
+
+        // Position += Velocity * Time
+        vec3.scaleAndAdd( this.position, this.position, this.linVelocity, dt ); 
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Handle Anglular Velocity
+        const angAccel = vec3.scale( [0,0,0], this.torque, 1 / this.inertia );
+
+        // Velocity += Acceleration + dt;
+        vec3.scaleAndAdd( this.angVelocity, this.angVelocity, angAccel, dt );
+
+        // Velocity += Invert( Vel ) * Factor * Time
+        vec3.scaleAndAdd( this.angVelocity, this.angVelocity, this.angVelocity, -this.friction * dt ); 
+
+        // Angular Change = Velocity * Time
+        const axis    = vec3.scale( [0,0,0], this.angVelocity, dt );
+        const angDist = vec3.length( axis ); // Length is the angle of rotation
+        vec3.normalize( axis, axis );        // Normalize to get axis of rotation for
+    
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Apply Position
+        this.mesh.position.fromArray( this.position );
+
+        // Apply Rotation
+        const q = quat.setAxisAngle( [0,0,0,1], axis, angDist );
+        quat.mul( this.rotation, q, this.rotation );
+        this.mesh.quaternion.fromArray( this.rotation );
+
+        // Reset
+        vec3.set( this.force, 0, 0, 0 );
+        vec3.set( this.torque, 0, 0, 0 );
+    }
+}
+
+</script>
+<div style="position:fixed; bottom:10px; left:10px;">
+    Use arrow keys to drive the object
+</div></body></html>

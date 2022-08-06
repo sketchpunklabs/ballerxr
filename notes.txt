@@ -1,0 +1,48 @@
+https://blog.ldtalentwork.com/2020/09/17/how-to-make-simple-car-physics-on-unity/
+
+
+
+https://www.youtube.com/watch?v=CdPYlj5uZeI&list=WL&index=2&t=168s
+
+[[ suspension ]]
+springDir = tireTransform.UP
+
+vec3 tireWorldVel = RigidBody.getPointVel( tirePosition )
+float offset       = restDist - tireRay.distance;
+
+// dir unit vector, so get magnitude of tireVel projected on SpringDir
+float vel         = dot( springDir, tireWorldvel )
+
+float force     = ( offset * springStrength ) - ( vel * springDamper )
+rigid.AddForceAtPos( springDir * force, tirePosition )
+
+[[ steering ]]
+steeringDir = tireTransform.right
+vec3 tireWorldVel = RigidBody.getPointVel( tirePosition )
+float  steeringVel = dot( steeringDir, tireWorldVel )
+float desiredVelChange = -steeringVel * tireGripFactor // 0-1
+
+float desiredAcell = desiredvelChange / dt;
+rigid.AddForceAtPos( steeringDir * tireMass * desiredAccel, tirePosition );
+
+[[ Accel & Braking ]]
+
+if( accelInput == 0 ) return;
+vec3 accelDir = tireTransform.forward;
+float cardSpeed = dot( carForward, car.velocity );
+float normlaizeSpeed = Clamp01( abs(carSpeed) / carTopSpeed );
+
+float availTorque = powerCurve.Evaluate(  normalizedSpeed ) & accelInput;
+rigid.addForceAtPosition( accelDir * availableTorque, tirePosition );
+
+
+https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics
+Torque - When you apply force on a specific point of a rigid body
+
+https://github.com/george7378/basic-physics
+https://stackoverflow.com/questions/24197182/efficient-quaternion-angular-velocity/24201879#24201879
+https://blog.ldtalentwork.com/2020/09/17/how-to-make-simple-car-physics-on-unity/
+https://doc.babylonjs.com/guidedLearning/workshop/Car_Driven
+
+
+https://burakkanber.com/blog/physics-in-javascript-car-suspension-part-1-spring-mass-damper/
