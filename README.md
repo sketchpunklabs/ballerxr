@@ -10,7 +10,7 @@ Demos : https://sketchpunklabs.github.io/ballerxr/
 ### Development Setup ###
 ```
 git clone --depth=1 https://github.com/sketchpunklabs/ballerxr
-cd oito
-npm ballerxr
+cd ballerxr
+npm install
 npm run start
 ```

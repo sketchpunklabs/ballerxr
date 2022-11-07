@@ -1,0 +1,297 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+import ShapePointsMesh     	from '../lib/meshes/ShapePointsMesh.js';
+import DynLinesMesh        	from '../lib/meshes/DynLineMesh.js';
+import { UtilGltf2, Gltf2 } from '../lib/UtilGltf2.js';
+import { vec3, quat }       from 'gl-matrix';
+
+let App;
+let Debug = {};
+let Ref = {
+    radius      : 0.3,
+    onSurface   : false,
+    surfacePos  : [0,0,0],
+    surfaceNorm : [0,0,0],
+    surfaceF    : [0,0,0],
+
+    marble  : null,
+    track   : null,
+    rbody   : null,
+    ray     : new THREE.Raycaster(),
+};
+
+
+
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 45, 20, 6, [0,0.8,0] );
+    App.onRender = onRender;
+
+    App.add( (Debug.pnt = new ShapePointsMesh() ) );
+    App.add( (Debug.ln  = new DynLinesMesh() ) );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const gltf = await Gltf2.fetch( '../../assets/models/marble_kit.gltf' );
+    let mesh = UtilGltf2.loadMesh( gltf, 'slant_solid_long_C', new THREE.MeshPhongMaterial() );
+    App.add( mesh );
+    Ref.track = [ mesh ];
+
+    mesh = UtilGltf2.loadMesh( gltf, 'bend_medium', new THREE.MeshPhongMaterial() );
+    mesh.rotation.y = Math.PI * 0.5;
+    mesh.position.x = 1.5;
+    mesh.position.z = 2.0;
+    App.add( mesh );
+
+    Ref.track.push( mesh );
+
+    const geo    = new THREE.SphereGeometry( Ref.radius, 16, 8 );
+    const sphere = new THREE.Mesh( geo, new THREE.MeshPhongMaterial( { color: 0xffff00 } ) );
+    sphere.position.fromArray( [0,2.5,-0.5] );
+    App.add( sphere );
+    
+    Ref.marble = sphere
+    Ref.rbody  = new RigidBody()
+        .setMesh( sphere )
+        .setRadius( Ref.radius )
+        .setPosition( sphere.position.toArray() );
+
+    Ref.rbody.useGravity = true;
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    rayTest( mesh );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // sphere.position.fromArray( hitPos );
+    // sphere.position.y += 0.3;
+    App.render();
+});
+
+let physicTick = -1;
+let run = true;
+function onRender( dt, et ){
+    let t = Math.floor( et / 0.01 );
+    if( t !== physicTick && run ){
+        physicTick = t;
+
+        rayCast();
+        if( Ref.onSurface ){
+            slopForce();
+            Ref.rbody.addForce( Ref.surfaceF );
+            Ref.rbody.useGravity = false;
+        }else{
+            Ref.rbody.useGravity = true;
+        }
+        
+        if( run ) Ref.rbody.update( dt );
+
+        if( Ref.rbody.position[1] < -1 ){
+            Ref.rbody.setPosition( [0,2.5,-0.5] ).resetVelocity();
+        }
+    }
+    
+}
+
+function rayCast(){
+    Ref.ray.ray.origin.fromArray( Ref.rbody.position );
+    Ref.ray.ray.direction.fromArray( [0,-1,0] );
+
+    const hits = Ref.ray.intersectObjects( Ref.track, true );
+    if( hits.length === 0 ) return null;
+
+    if( hits[ 0 ].distance <= Ref.radius ){
+        vec3.copy( Ref.surfacePos, hits[0].point.toArray() );
+        vec3.copy( Ref.surfaceNorm, hits[0].face.normal.toArray() );
+
+        const pos = vec3.add( [0,0,0], Ref.surfacePos, [0,Ref.radius,0] )
+        Ref.rbody.setPosition( pos );
+
+        if( !Ref.onSurface ) Ref.rbody.scaleVelocity( 0.5 );
+
+        Ref.onSurface = true;
+    }else{
+        Ref.onSurface = false;
+    }
+}
+
+function slopForce(){
+    const invRay  = [0,1,0];
+    const rotAxis = vec3.cross( [0,0,0], invRay, Ref.surfaceNorm );  // Find rotation axis for angular rotation
+    const fwd     = vec3.cross( [0,0,0], rotAxis, Ref.surfaceNorm );   // Find Direction of slop force
+    vec3.normalize( rotAxis, rotAxis );
+    vec3.normalize( fwd, fwd );
+
+    const dot     = vec3.dot( invRay, fwd );
+    if( dot !== 0 ){
+        vec3.scale( Ref.surfaceF, fwd, dot * -9.81 );
+    }
+    
+    // Debug.ln.add( Ref.surfacePos, vec3.scaleAndAdd([0,0,0], Ref.surfacePos, rotAxis, 2 ), 0xff0000, null, true );
+    // Debug.ln.add( Ref.surfacePos, vec3.scaleAndAdd([0,0,0], Ref.surfacePos, fwd, 2 ), 0x00ffff, null, false );
+}
+
+function rayTest( mesh ){
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const pos = [0,2.5,-0.5];
+    const dir = [0,-1,0];
+
+    Debug.pnt.add( pos, 0x00ffff, 3 );
+    Debug.ln.add( pos, vec3.scaleAndAdd([0,0,0], pos, dir, 2 ), 0x00ffff, null, true );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const vPos      = new THREE.Vector3().fromArray( pos );
+    const vDir      = new THREE.Vector3().fromArray( dir );
+    const ray       = new THREE.Raycaster( vPos, vDir );
+    const hit       = ray.intersectObject( mesh )[ 0 ];
+
+    const hitPos    = hit.point.toArray();
+    const hitNorm   = hit.face.normal.toArray();
+
+    Debug.pnt.add( hitPos, 0x00aaaa, 7, 6 );
+    Debug.ln.add( hitPos, vec3.scaleAndAdd([0,0,0], hitPos, hitNorm, 2 ), 0xff0000 );
+
+    // Get the opposite direction of the ray;
+    const invDir  = vec3.negate( [0,0,0], dir ); 
+    
+    // Find rotation axis for angular rotation
+    const rotAxis = vec3.cross( [0,0,0], invDir, hitNorm );
+
+    // Find Direction of slop force
+    const fwd     = vec3.cross( [0,0,0], rotAxis, hitNorm );
+
+    // Maybe use Dot to determine speed somehow? At least
+    // if its negative the direction is going in a downward direction
+    const strength = vec3.dot( invDir, fwd );
+
+    vec3.normalize( rotAxis, rotAxis );
+    vec3.normalize( fwd, fwd );
+
+    Debug.ln.add( hitPos, vec3.scaleAndAdd([0,0,0], hitPos, rotAxis, 2 ), 0xff0000, null, true );
+    Debug.ln.add( hitPos, vec3.scaleAndAdd([0,0,0], hitPos, fwd, 2 ), 0x00ffff, null, false );
+}
+
+// https://github.com/dimforge/rapier/blob/master/src/dynamics/rigid_body.rs
+// https://github.com/dimforge/rapier/blob/master/src/dynamics/rigid_body_components.rs#L174
+
+// Note: Impulse is a one time Force applied but as force = impulse * mass
+class RigidBody{
+    // #region MAIN
+    mesh            = null;
+    useGravity      = false;
+
+    mass            = 1;
+    friction        = 0.4;
+    
+    position        = [0,0,0];
+    rotation        = [0,0,0,1];
+    linVelocity     = [0,0,0];
+    angVelocity     = [0,0,0];
+    
+    gravity         = [0,-9.81,0];      // Downward Force
+    force           = [0,0,0];          // Linear Force
+    torque          = [0,0,0];          // Angular Force
+
+    // Hollow Sphere Inertia = 2/3 * ( mr^2 )
+    // Solid Sphere Inertia  = 2/5 * ( mr^2 )
+    radius          = 1.0;
+    inertia         = 2/5 * ( this.mass * ( this.radius**2 ) );
+
+    constructor(){}
+    // #endregion
+
+    // #region SETTERS
+    setMesh( m ){ this.mesh = m; return this; }
+
+    resetVelocity(){
+        vec3.set( this.linVelocity, 0, 0, 0 );
+        vec3.set( this.angVelocity, 0, 0, 0 );
+        return this;
+    }
+
+    scaleVelocity( scl ){
+        vec3.scale( this.linVelocity, this.linVelocity, scl );
+        vec3.scale( this.angVelocity, this.angVelocity, scl );
+        return this;
+    }
+    
+    setPosition( p ){ 
+        vec3.copy( this.position, p );
+        if( this.mesh ) this.mesh.position.fromArray( p );
+        return this;
+    }
+    
+    setRadius( r ){
+        this.radius     = r;
+        this.inertia    = 2/5 * ( this.mass * ( this.radius**2 ) );
+        return this;
+    }
+
+    addForce( force, atPos=null ){
+        vec3.add( this.force, this.force, force );
+        if( atPos ){
+            // 2D Torque = radius.x * force.y - radius.y * force.x ( Radius = PointOfForce - CenterOfMass )
+            // 3D Torque = cross( radius, force );
+            const torque = vec3.cross( [0,0,0], atPos, force );
+            vec3.add( this.torque, this.torque, torque );
+        }
+        return this;
+    }
+    // #endregion
+
+    update( dt ){
+        const accel = [0,0,0];
+        const f     = [0,0,0];
+        const tmp   = [0,0,0];
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Accumulate Forces
+        vec3.add( f, f, this.force );
+        if( this.useGravity ) vec3.add( f, f, this.gravity );
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Handle Linear Velocity
+
+        // Acceleration  = force / mass
+        vec3.scale( accel, f, 1 / this.mass );                                  
+        
+        // Velocity += Acceleration * Time
+        vec3.scaleAndAdd( this.linVelocity, this.linVelocity, accel, dt );      
+
+        // Velocity += Invert( Vel ) * Factor * Time
+        vec3.scaleAndAdd( this.linVelocity, this.linVelocity, this.linVelocity, -this.friction * dt ); 
+
+        // Position += Velocity * Time
+        vec3.scaleAndAdd( this.position, this.position, this.linVelocity, dt ); 
+
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Handle Anglular Velocity
+        const angAccel = vec3.scale( [0,0,0], this.torque, 1 / this.inertia );
+
+        // Velocity += Acceleration + dt;
+        vec3.scaleAndAdd( this.angVelocity, this.angVelocity, angAccel, dt );
+
+        // Velocity += Invert( Vel ) * Factor * Time
+        vec3.scaleAndAdd( this.angVelocity, this.angVelocity, this.angVelocity, -this.friction * dt ); 
+
+        // Angular Change = Velocity * Time
+        const axis    = vec3.scale( [0,0,0], this.angVelocity, dt );
+        const angDist = vec3.length( axis ); // Length is the angle of rotation
+        vec3.normalize( axis, axis );        // Normalize to get axis of rotation for
+    
+        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Apply Position
+        this.mesh.position.fromArray( this.position );
+
+        // Apply Rotation
+        const q = quat.setAxisAngle( [0,0,0,1], axis, angDist );
+        quat.mul( this.rotation, q, this.rotation );
+        this.mesh.quaternion.fromArray( this.rotation );
+
+        // Reset
+        vec3.set( this.force, 0, 0, 0 );
+        vec3.set( this.torque, 0, 0, 0 );
+    }
+}
+
+
+</script></body></html>

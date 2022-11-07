@@ -1,0 +1,106 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+import Starter, { THREE }   from '../lib/Starter.js';
+//import DynLinesMesh        	from '../lib/meshes/DynLineMesh.js';
+import facedCube           	from '../lib/meshes/FacedCube.js';
+import { vec3, quat }       from 'gl-matrix';
+
+import SpringIE_Float       from '../lib/maths/springs/SpringIE_Float.js';
+import SpringSIE_Float      from '../lib/maths/springs/SpringSIE_Float.js';
+
+let App;
+let Debug = {};
+let Ref   = {
+    items : []
+};
+//https://github.com/sketchpunk/temp/blob/master/Fungi_v5/fungi/maths/Spring.js
+// TODO : https://github.com/pqml/spring
+window.addEventListener( "load", async _=>{
+	// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	App = new Starter( { webgl2:false, grid:true } );
+	App.setCamera( 0, 20, 10, [0,0.8,0] );
+    App.onRender = onRender;
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    const cube = facedCube();
+    cube.position.set( 0, 0.5, 0 );
+
+    Ref.items.push( new SpringTester( cube, new SpringSIE_Float().setOscPs( 1 ).setDamp( 0.4 ), 0.0 ) );
+    Ref.items.push( new SpringTester( cube, new SpringIE_Float().setOscPs( 1 ).setDamp( 0.4 ), 1.0 ) );    
+
+    Ref.items.push( new SpringTester( cube, new SpringA( 0.4, 4 ), -1.0 ) );
+    Ref.items.push( new SpringTester( cube, new SpringVRM( 0.4, 0.3 ), -2.0 ) );
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    App.render();
+});
+
+function onRender( dt, et ){
+    const x = Math.floor( et / 2.2 );
+    const s = ( (x & 1) === 1 )? -1 : 1;
+
+    for( let i of Ref.items ) i.update( dt, 3 * s );    
+}
+
+class SpringTester{
+    constructor( mesh, spring, z ){
+        const scl = 0.5;
+        
+        this.mesh = mesh.clone();
+        this.mesh.scale.set( scl, scl, scl );
+        this.mesh.position.z = z;
+        App.add( this.mesh );
+
+        this.spring = spring;
+    }
+
+    update( dt, target ){
+        this.spring.setTarget( target ).update( dt );
+        this.mesh.position.x = this.spring.value;
+    }
+}
+
+class SpringA{
+    constructor( damp, stiffness ){
+        this.target     = 0;
+        this.value      = 0;
+        this.vel        = 0;
+        this.damping    = damp;
+        this.stiffness  = stiffness;
+    }
+    setTarget( v ){ this.target = v; return this; }
+
+    update( dt ){
+        // F = -k * displacement - damp * velocity
+        // accel = -stiffness * ( pos - to ) / mass;
+        // vel  += ( a - damping * vel ) * dt;
+        const accel = -this.stiffness * ( this.value - this.target );
+        this.vel    = this.vel + ( accel - this.damping * this.vel ) * dt;
+        this.value  = this.value + this.vel * dt;
+
+        return this.value;
+    }
+}
+
+// https://github.com/vrm-c/UniVRM/blob/master/Assets/VRM/Runtime/SpringBone/VRMSpringBone.cs#L109
+class SpringVRM{
+    constructor( damp, stiffness ){
+        this.target     = 0;
+        this.value      = 0;
+        this.vel        = 0;
+        this.damping    = damp;
+        this.stiffness  = stiffness;
+    }
+    setTarget( v ){ this.target = v; return this; }
+
+    update( dt ){
+        // var nextTail = currentTail
+        // + (currentTail - prevTail) * (1.0f - dragForce) // 前フレームの移動を継続する(減衰もあるよ)
+        // + ParentRotation * LocalRotation * m_boneAxis * stiffnessForce // 親の回転による子ボーンの移動目標
+        // + external; // 外力による移動量
+        this.vel    = this.vel + ( ( this.value - this.target ) * ( 1.0 - this.damping ) + this.vel * this.stiffness );
+        this.value  = this.value + this.vel * dt;
+        return this.value;
+    }
+}
+
+</script></body></html>

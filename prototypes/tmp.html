@@ -1,0 +1,21 @@
+<!DOCTYPE html><html><head><title></title></head><body><script src="../import-map.js"></script><script type="module">
+
+const Ref = {};
+
+window.addEventListener( "load", _=>{
+
+    let buf = "";
+
+    for( let j=9; j < 32; j++ ){
+        for( let i=0; i < 32; i++ ){
+            buf += '<a href="https://www.zeldadungeon.net/maps/botw/tiles/5/'+j+'_'+i+'.jpg">'+ i +'</a><br>';
+        }
+    }
+
+    document.querySelector( 'div' ).innerHTML = buf;
+
+});
+
+
+</script>
+<div></div><style>a{font-size:30px;}</style></body></html>
